@@ -1,0 +1,824 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AR Indoor Navigation | Beaconless Solution</title>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/build/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/controls/OrbitControls.js"></script>
+    <style>
+        :root {
+            --dark-yellow: #d4af37;
+            --light-yellow: #f1e5ac;
+            --black: #121212;
+            --dark-red: #8b0000;
+            --light-red: #ff6b6b;
+            --gray: #2a2a2a;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background-color: var(--black);
+            color: var(--light-yellow);
+            overflow-x: hidden;
+        }
+        
+        /* Navigation */
+        nav {
+            position: fixed;
+            top: 0;
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1.5rem 5%;
+            background-color: rgba(18, 18, 18, 0.9);
+            z-index: 100;
+            backdrop-filter: blur(5px);
+        }
+        
+        .logo {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: var(--dark-yellow);
+            text-decoration: none;
+        }
+        
+        .nav-links {
+            display: flex;
+            gap: 2rem;
+        }
+        
+        .nav-links a {
+            color: var(--light-yellow);
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.3s;
+            position: relative;
+        }
+        
+        .nav-links a:hover {
+            color: var(--dark-yellow);
+        }
+        
+        .nav-links a::after {
+            content: '';
+            position: absolute;
+            width: 0;
+            height: 2px;
+            bottom: -5px;
+            left: 0;
+            background-color: var(--dark-yellow);
+            transition: width 0.3s;
+        }
+        
+        .nav-links a:hover::after {
+            width: 100%;
+        }
+        
+        /* Hero Section */
+        .hero {
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            padding: 0 5%;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        #canvas3d {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            opacity: 0.3;
+        }
+        
+        .hero h1 {
+            font-size: 4rem;
+            margin-bottom: 1.5rem;
+            color: var(--dark-yellow);
+            opacity: 0;
+            transform: translateY(50px);
+            animation: fadeInUp 1s forwards 0.5s;
+        }
+        
+        .hero p {
+            font-size: 1.2rem;
+            max-width: 800px;
+            margin-bottom: 2rem;
+            opacity: 0;
+            transform: translateY(50px);
+            animation: fadeInUp 1s forwards 0.8s;
+        }
+        
+        .cta-button {
+            padding: 0.8rem 2rem;
+            background-color: var(--dark-yellow);
+            color: var(--black);
+            border: none;
+            border-radius: 5px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            opacity: 0;
+            transform: translateY(50px);
+            animation: fadeInUp 1s forwards 1.1s;
+            text-decoration: none;
+        }
+        
+        .cta-button:hover {
+            background-color: var(--light-yellow);
+            transform: translateY(-3px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+        }
+        
+        /* Sections */
+        section {
+            padding: 8rem 10%;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            position: relative;
+        }
+        
+        .section-title {
+            font-size: 2.5rem;
+            margin-bottom: 3rem;
+            color: var(--dark-yellow);
+            position: relative;
+            opacity: 0;
+            transform: translateX(-50px);
+        }
+        
+        .section-title::after {
+            content: '';
+            position: absolute;
+            bottom: -10px;
+            left: 0;
+            width: 100px;
+            height: 3px;
+            background-color: var(--light-red);
+        }
+        
+        .section-content {
+            display: flex;
+            gap: 3rem;
+            align-items: center;
+            opacity: 0;
+            transform: translateY(50px);
+        }
+        
+        .text-content {
+            flex: 1;
+        }
+        
+        .text-content p {
+            margin-bottom: 1.5rem;
+            line-height: 1.6;
+        }
+        
+        .highlight {
+            color: var(--light-red);
+            font-weight: 600;
+        }
+        
+        .image-content {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+        }
+        
+        .feature-image {
+            max-width: 100%;
+            border-radius: 10px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+            transition: transform 0.5s;
+        }
+        
+        .feature-image:hover {
+            transform: scale(1.03);
+        }
+        
+        /* Features Grid */
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            margin-top: 3rem;
+        }
+        
+        .feature-card {
+            background-color: var(--gray);
+            padding: 2rem;
+            border-radius: 10px;
+            transition: transform 0.3s, box-shadow 0.3s;
+            border-left: 4px solid var(--dark-yellow);
+            opacity: 0;
+            transform: translateY(50px);
+        }
+        
+        .feature-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.4);
+        }
+        
+        .feature-card h3 {
+            font-size: 1.3rem;
+            margin-bottom: 1rem;
+            color: var(--dark-yellow);
+        }
+        
+        /* Journey Timeline */
+        .timeline {
+            position: relative;
+            max-width: 1200px;
+            margin: 3rem auto;
+        }
+        
+        .timeline::after {
+            content: '';
+            position: absolute;
+            width: 6px;
+            background-color: var(--dark-yellow);
+            top: 0;
+            bottom: 0;
+            left: 50%;
+            margin-left: -3px;
+        }
+        
+        .timeline-item {
+            padding: 10px 40px;
+            position: relative;
+            width: 50%;
+            opacity: 0;
+            transform: translateY(50px);
+        }
+        
+        .timeline-item:nth-child(odd) {
+            left: 0;
+        }
+        
+        .timeline-item:nth-child(even) {
+            left: 50%;
+        }
+        
+        .timeline-item::after {
+            content: '';
+            position: absolute;
+            width: 25px;
+            height: 25px;
+            right: -17px;
+            background-color: var(--light-red);
+            border: 4px solid var(--dark-yellow);
+            top: 15px;
+            border-radius: 50%;
+            z-index: 1;
+        }
+        
+        .timeline-item:nth-child(even)::after {
+            left: -16px;
+        }
+        
+        .timeline-content {
+            padding: 20px 30px;
+            background-color: var(--gray);
+            position: relative;
+            border-radius: 6px;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+        }
+        
+        .timeline-content h3 {
+            color: var(--dark-yellow);
+            margin-bottom: 1rem;
+        }
+        
+        /* Result Section */
+        .result-stats {
+            display: flex;
+            justify-content: space-around;
+            flex-wrap: wrap;
+            gap: 2rem;
+            margin-top: 3rem;
+        }
+        
+        .stat-item {
+            text-align: center;
+            padding: 2rem;
+            background-color: var(--gray);
+            border-radius: 10px;
+            flex: 1;
+            min-width: 200px;
+            opacity: 0;
+            transform: translateY(50px);
+        }
+        
+        .stat-number {
+            font-size: 3rem;
+            font-weight: 700;
+            color: var(--light-red);
+            margin-bottom: 1rem;
+        }
+        
+        .stat-label {
+            font-size: 1.1rem;
+            color: var(--light-yellow);
+        }
+        
+        /* Future Section */
+        .future-list {
+            list-style-type: none;
+            margin-top: 2rem;
+        }
+        
+        .future-list li {
+            margin-bottom: 1.5rem;
+            padding-left: 2rem;
+            position: relative;
+            opacity: 0;
+            transform: translateX(-50px);
+        }
+        
+        .future-list li::before {
+            content: '→';
+            position: absolute;
+            left: 0;
+            color: var(--dark-yellow);
+            font-weight: bold;
+        }
+        
+        /* Footer */
+        footer {
+            background-color: var(--gray);
+            padding: 3rem 10%;
+            text-align: center;
+        }
+        
+        .footer-content {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1.5rem;
+        }
+        
+        .footer-links {
+            display: flex;
+            gap: 2rem;
+        }
+        
+        .footer-links a {
+            color: var(--light-yellow);
+            text-decoration: none;
+            transition: color 0.3s;
+        }
+        
+        .footer-links a:hover {
+            color: var(--dark-yellow);
+        }
+        
+        .copyright {
+            color: var(--light-yellow);
+            opacity: 0.7;
+            font-size: 0.9rem;
+        }
+        
+        /* Animations */
+        @keyframes fadeInUp {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        @keyframes fadeInLeft {
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            .hero h1 {
+                font-size: 2.5rem;
+            }
+            
+            .section-content {
+                flex-direction: column;
+            }
+            
+            .timeline::after {
+                left: 31px;
+            }
+            
+            .timeline-item {
+                width: 100%;
+                padding-left: 70px;
+                padding-right: 25px;
+            }
+            
+            .timeline-item:nth-child(even) {
+                left: 0;
+            }
+            
+            .timeline-item::after {
+                left: 18px;
+            }
+            
+            .timeline-item:nth-child(odd)::after {
+                left: 18px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <nav>
+        <a href="#" class="logo">IN Nav</a>
+        <div class="nav-links">
+            <a href="#problem">The Problem</a>
+            <a href="#challenge">The Challenge</a>
+            <a href="#solution">The Solution</a>
+            <a href="#journey">The Journey</a>
+            <a href="#result">The Result</a>
+            <a href="#future">The Future</a>
+        </div>
+    </nav>
+    
+    <section class="hero">
+        <canvas id="canvas3d"></canvas>
+        <h1>Indoor Navigation Redefined</h1>
+        <p>A beaconless AR solution for complex indoor environments using smartphone sensors and minimal infrastructure</p>
+        <a href="#solution" class="cta-button">Explore the Solution</a>
+    </section>
+    
+    <section id="problem">
+        <h2 class="section-title">1. The Problem (The Why)</h2>
+        <div class="section-content">
+            <div class="text-content">
+                <p>Navigating large indoor spaces like college campuses, airports, and shopping malls has become a significant challenge in our modern, complex built environments. Traditional solutions often fall short, leaving visitors and even regular users frustrated and disoriented.</p>
+                
+                <p>At our college, we observed this problem firsthand. <span class="highlight">Students and visitors regularly struggled to find their way</span> through the maze-like corridors, especially during high-stress situations like exams or important events. The absence of an effective indoor navigation system led to:</p>
+                
+                <ul class="future-list">
+                    <li>Increased stress and anxiety for visitors</li>
+                    <li>Wasted time searching for rooms and departments</li>
+                    <li>Disrupted schedules during critical academic events</li>
+                    <li>Negative impact on the overall campus experience</li>
+                </ul>
+                
+                <p>Existing solutions either required expensive infrastructure like Bluetooth beacons or depended on detailed 3D models of buildings that were often unavailable or impractical to create. This gap in accessible indoor navigation technology inspired our project.</p>
+            </div>
+            <div class="image-content">
+                <img src="./Asset/arvrLab.png" alt="Lost person in large building" class="feature-image">
+            </div>
+        </div>
+    </section>
+    
+    <section id="challenge" style="background-color: rgba(139, 0, 0, 0.05);">
+        <h2 class="section-title">2. The Challenge (The Conflict)</h2>
+        <div class="section-content">
+            <div class="image-content">
+                <img src="./Asset/complexBuilding.jpg" alt="Complex building architecture" class="feature-image">
+            </div>
+            <div class="text-content">
+                <p>The path to creating an effective indoor navigation system was fraught with technical and logistical obstacles that tested our problem-solving abilities at every turn.</p>
+                
+                <p><span class="highlight">Our primary challenge was the complete absence of digital blueprints</span> or accurate floor plans for the college building. Without these fundamental resources, we couldn't create the digital foundation needed for navigation.</p>
+                
+                <div class="features-grid">
+                    <div class="feature-card">
+                        <h3>Data Deficiency</h3>
+                        <p>No access to official building measurements or architectural plans despite multiple requests to administration.</p>
+                    </div>
+                    <div class="feature-card">
+                        <h3>Hardware Limitations</h3>
+                        <p>Needed to develop a solution that wouldn't rely on expensive beacons or specialized equipment.</p>
+                    </div>
+                    <div class="feature-card">
+                        <h3>Positioning Accuracy</h3>
+                        <p>Standard GPS doesn't work indoors, and WiFi positioning wasn't consistently available.</p>
+                    </div>
+                    <div class="feature-card">
+                        <h3>User Adoption</h3>
+                        <p>Creating a system simple enough for all users while maintaining accuracy.</p>
+                    </div>
+                </div>
+                
+                <p>These constraints forced us to think creatively about how to deliver indoor navigation without the typical prerequisites that similar systems require.</p>
+            </div>
+        </div>
+    </section>
+    
+    <section id="solution">
+        <h2 class="section-title">3. The Solution (Our Project)</h2>
+        <div class="section-content">
+            <div class="text-content">
+                <p>Faced with these challenges, we developed an innovative approach that turns constraints into advantages, creating a lightweight, accessible indoor navigation system.</p>
+                
+                <p><span class="highlight">Our solution centers on a simplified 2D ground plan-based system</span> that requires minimal infrastructure while delivering maximum utility. By focusing on the essential elements needed for navigation, we bypassed the need for complex 3D models or expensive hardware.</p>
+                
+                <div class="features-grid">
+                    <div class="feature-card">
+                        <h3>Node-Based Mapping</h3>
+                        <p>Key locations converted to nodes connected by virtual edges, creating a navigable network.</p>
+                    </div>
+                    <div class="feature-card">
+                        <h3>AR Visualization</h3>
+                        <p>Unity-powered augmented reality interface provides intuitive, game-like navigation.</p>
+                    </div>
+                    <div class="feature-card">
+                        <h3>QR Code Activation</h3>
+                        <p>Strategic QR code placement allows system initiation without constant connectivity.</p>
+                    </div>
+                    <div class="feature-card">
+                        <h3>Sensor-Based Tracking</h3>
+                        <p>Smartphone gyroscope and orientation sensors enable position updates without additional hardware.</p>
+                    </div>
+                </div>
+                
+                <p>This combination of technologies creates a robust yet economical solution that can be deployed in virtually any indoor environment with minimal setup requirements.</p>
+            </div>
+            <div class="image-content">
+                <img src="./Asset/mobileInNav.jpg" alt="Smartphone with AR navigation" class="feature-image">
+            </div>
+        </div>
+    </section>
+    
+    <section id="journey" style="background-color: rgba(139, 0, 0, 0.05);">
+        <h2 class="section-title">4. The Journey (Development Process)</h2>
+        <div class="timeline">
+            <div class="timeline-item">
+                <div class="timeline-content">
+                    <h3>Idea Conception</h3>
+                    <p>The project was born from observing daily navigation struggles at our college. We identified the specific pain points and began researching existing solutions and their limitations.</p>
+                </div>
+            </div>
+            <div class="timeline-item">
+                <div class="timeline-content">
+                    <h3>Data Collection</h3>
+                    <p>Initial attempts to gather official building plans revealed our first major obstacle. Without this data, we had to pivot to alternative mapping approaches.</p>
+                </div>
+            </div>
+            <div class="timeline-item">
+                <div class="timeline-content">
+                    <h3>Design Phase</h3>
+                    <p>We developed the node-edge concept and manual coordinate system as a workaround for missing architectural data. This became the foundation of our solution.</p>
+                </div>
+            </div>
+            <div class="timeline-item">
+                <div class="timeline-content">
+                    <h3>Prototype Development</h3>
+                    <p>Using Unity, we created a functional AR prototype that demonstrated the core navigation functionality with simulated environments.</p>
+                </div>
+            </div>
+            <div class="timeline-item">
+                <div class="timeline-content">
+                    <h3>Technical Validation</h3>
+                    <p>We confirmed the feasibility of gyroscope-based tracking and QR code initialization through controlled tests, though real-world testing remained elusive.</p>
+                </div>
+            </div>
+            <div class="timeline-item">
+                <div class="timeline-content">
+                    <h3>Roadblocks</h3>
+                    <p>Lack of administrative support for QR placement and inability to access the building for measurements created implementation barriers we couldn't overcome.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+    
+    <section id="result">
+        <h2 class="section-title">5. The Result (Impact/Outcome)</h2>
+        <div class="section-content">
+            <div class="text-content">
+                <p>While the project couldn't be fully implemented in its intended environment, the development process yielded valuable insights and demonstrated the technical viability of our approach.</p>
+                
+                <p><span class="highlight">Key outcomes and learnings</span> from the project:</p>
+                
+                <div class="result-stats">
+                    <div class="stat-item">
+                        <div class="stat-number">100%</div>
+                        <div class="stat-label">Beacon-Free Solution</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-number">2D</div>
+                        <div class="stat-label">Simplified Mapping</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-number">0</div>
+                        <div class="stat-label">Additional Hardware</div>
+                    </div>
+                </div>
+                
+                <p>The project successfully proved that indoor navigation could be achieved without expensive infrastructure or detailed 3D models. While administrative and logistical hurdles prevented full deployment, the technical foundation was firmly established.</p>
+                
+                <p>This experience taught us valuable lessons about project dependencies, prototyping under constraints, and the importance of stakeholder buy-in for institutional projects.</p>
+            </div>
+            <div class="image-content">
+                <img src="https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=80" alt="Project learnings and outcomes" class="feature-image">
+            </div>
+        </div>
+    </section>
+    
+    <section id="future" style="background-color: rgba(139, 0, 0, 0.05);">
+        <h2 class="section-title">6. The Future (Next Steps)</h2>
+        <div class="section-content">
+            <div class="image-content">
+                <img src="./Asset/future.jpg" alt="Future technology concepts" class="feature-image">
+            </div>
+            <div class="text-content">
+                <p>While the current project faced implementation barriers, the concept holds tremendous potential for future development and application in various settings.</p>
+                
+                <p><span class="highlight">Potential future directions</span> for the technology:</p>
+                
+                <ul class="future-list">
+                    <li><strong>Community Mapping:</strong> Leverage open-source tools and crowd-sourced data to create building maps without institutional support</li>
+                    <li><strong>Visual SLAM:</strong> Incorporate camera-based simultaneous localization and mapping for automatic interior mapping</li>
+                    <li><strong>Temporary Deployments:</strong> Target events and conferences where temporary navigation aids are needed</li>
+                    <li><strong>Voice Integration:</strong> Add voice guidance for accessibility and hands-free use</li>
+                    <li><strong>Emergency Features:</strong> Incorporate emergency exit routing and safety information</li>
+                    <li><strong>Multi-Building Support:</strong> Expand to campus-wide or complex-wide navigation systems</li>
+                </ul>
+                
+                <p>With additional development and the right implementation opportunities, this beaconless indoor navigation approach could provide accessible wayfinding solutions for countless environments where traditional systems are impractical or too expensive.</p>
+            </div>
+        </div>
+    </section>
+    
+    <footer>
+        <div class="footer-content">
+            <h3>AR Indoor Navigation Project</h3>
+            <p><i>Founder</i> HK_HEARTS❤️</p>
+            <p>Innovative beaconless solution for complex indoor environments</p>
+            <div class="footer-links">
+                <a href="#problem">The Problem</a>
+                <a href="#challenge">The Challenge</a>
+                <a href="#solution">The Solution</a>
+                <a href="#journey">The Journey</a>
+                <a href="#result">The Result</a>
+                <a href="#future">The Future</a>
+            </div>
+            <p class="copyright">© 2025 IN Nav Project. All rights reserved.</p>
+        </div>
+    </footer>
+    
+    <script>
+        // Three.js Animation
+        const canvas = document.getElementById('canvas3d');
+        const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.z = 5;
+        
+        // Create a network of nodes and edges (representing our navigation concept)
+        const nodes = [];
+        const edges = [];
+        
+        // Create nodes
+        for (let i = 0; i < 15; i++) {
+            const geometry = new THREE.SphereGeometry(0.1, 16, 16);
+            const material = new THREE.MeshBasicMaterial({ 
+                color: i % 3 === 0 ? 0xd4af37 : (i % 3 === 1 ? 0x8b0000 : 0xf1e5ac) 
+            });
+            const sphere = new THREE.Mesh(geometry, material);
+            
+            // Position nodes in an organic, network-like pattern
+            sphere.position.x = (Math.random() - 0.5) * 8;
+            sphere.position.y = (Math.random() - 0.5) * 5;
+            sphere.position.z = (Math.random() - 0.5) * 3;
+            
+            nodes.push(sphere);
+            scene.add(sphere);
+        }
+        
+        // Create edges between nodes
+        for (let i = 0; i < nodes.length; i++) {
+            for (let j = i + 1; j < nodes.length; j++) {
+                if (Math.random() > 0.7) { // Random connections
+                    const geometry = new THREE.BufferGeometry().setFromPoints([
+                        new THREE.Vector3(
+                            nodes[i].position.x,
+                            nodes[i].position.y,
+                            nodes[i].position.z
+                        ),
+                        new THREE.Vector3(
+                            nodes[j].position.x,
+                            nodes[j].position.y,
+                            nodes[j].position.z
+                        )
+                    ]);
+                    const material = new THREE.LineBasicMaterial({ 
+                        color: 0x555555,
+                        transparent: true,
+                        opacity: 0.5
+                    });
+                    const line = new THREE.Line(geometry, material);
+                    edges.push(line);
+                    scene.add(line);
+                }
+            }
+        }
+        
+        // Animation
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            // Rotate nodes slightly
+            nodes.forEach((node, index) => {
+                node.position.x += Math.sin(Date.now() * 0.001 + index) * 0.001;
+                node.position.y += Math.cos(Date.now() * 0.001 + index * 2) * 0.001;
+            });
+            
+            // Update edges
+            edges.forEach((edge, index) => {
+                const positions = edge.geometry.attributes.position;
+                const node1 = nodes[index % nodes.length];
+                const node2 = nodes[(index + 1) % nodes.length];
+                
+                positions.array[0] = node1.position.x;
+                positions.array[1] = node1.position.y;
+                positions.array[2] = node1.position.z;
+                
+                positions.array[3] = node2.position.x;
+                positions.array[4] = node2.position.y;
+                positions.array[5] = node2.position.z;
+                
+                positions.needsUpdate = true;
+            });
+            
+            renderer.render(scene, camera);
+        }
+        
+        animate();
+        
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+        
+        // Scroll animations
+        const observerOptions = {
+            threshold: 0.1
+        };
+        
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    if (entry.target.classList.contains('section-title')) {
+                        entry.target.style.animation = 'fadeInLeft 1s forwards';
+                    } else if (entry.target.classList.contains('section-content')) {
+                        entry.target.style.animation = 'fadeInUp 1s forwards';
+                    } else if (entry.target.classList.contains('timeline-item')) {
+                        entry.target.style.animation = `fadeInUp 1s forwards ${entry.target.dataset.delay || '0s'}`;
+                    } else if (entry.target.classList.contains('feature-card')) {
+                        entry.target.style.animation = `fadeInUp 0.8s forwards ${entry.target.dataset.delay || '0s'}`;
+                    } else if (entry.target.classList.contains('stat-item')) {
+                        entry.target.style.animation = `fadeInUp 0.8s forwards ${entry.target.dataset.delay || '0s'}`;
+                    } else if (entry.target.classList.contains('future-list') && entry.target.querySelectorAll('li')) {
+                        const items = entry.target.querySelectorAll('li');
+                        items.forEach((item, index) => {
+                            item.style.animation = `fadeInLeft 0.8s forwards ${index * 0.2}s`;
+                        });
+                    }
+                }
+            });
+        }, observerOptions);
+        
+        // Observe all animatable elements
+        document.querySelectorAll('.section-title, .section-content, .timeline-item, .feature-card, .stat-item, .future-list').forEach(el => {
+            observer.observe(el);
+        });
+        
+        // Add slight delays to timeline items for staggered animation
+        document.querySelectorAll('.timeline-item').forEach((item, index) => {
+            item.dataset.delay = `${index * 0.2}s`;
+        });
+        
+        // Add delays to feature cards for staggered animation
+        document.querySelectorAll('.feature-card').forEach((card, index) => {
+            card.dataset.delay = `${(index % 4) * 0.15}s`;
+        });
+        
+        // Add delays to stat items for staggered animation
+        document.querySelectorAll('.stat-item').forEach((item, index) => {
+            item.dataset.delay = `${index * 0.2}s`;
+        });
+    </script>
+</body>
+</html>
